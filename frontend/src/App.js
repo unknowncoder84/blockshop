@@ -30,6 +30,7 @@ import CartPage from './pages/CartPage';
 import OrderConfirmation from './pages/OrderConfirmation';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import CompleteGoogleRegistration from './pages/CompleteGoogleRegistration';
 import AuthCallback from './pages/AuthCallback';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
@@ -229,6 +230,9 @@ function App() {
             } />
             <Route path="/signup" element={
               user ? <Navigate to="/" /> : <SignupPage onLogin={handleLogin} />
+            } />
+            <Route path="/complete-google-registration" element={
+              user ? <Navigate to="/" /> : <CompleteGoogleRegistration onLogin={handleLogin} />
             } />
             <Route path="/auth/callback" element={<AuthCallback onLogin={handleLogin} />} />
 
