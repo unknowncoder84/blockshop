@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Signup - BlockShop</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; margin-bottom: 10px; }
+        .subtitle { color: #666; margin-bottom: 30px; }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        button:hover { background: #45a049; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .log {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+        }
+        .success { color: #155724; background: #d4edda; padding: 3px 6px; border-radius: 3px; }
+        .error { color: #721c24; background: #f8d7da; padding: 3px 6px; border-radius: 3px; }
+        .info { color: #0c5460; background: #d1ecf1; padding: 3px 6px; border-radius: 3px; }
+        .warning { color: #856404; background: #fff3cd; padding: 3px 6px; border-radius: 3px; }
+        label { display: block; margin-top: 15px; font-weight: bold; color: #333; }
+        .step { background: #e3f2fd; padding: 10px; margin: 10px 0; border-left: 4px solid #2196F3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Signup Tool</h1>
+        <p class="subtitle">This will show you EXACTLY what happens when you signup</p>
+
+        <form onsubmit="testSignup(event)">
+            <label>Full Name:</label>
+            <input type="text" id="name" placeholder="John Doe" required>
+            
+            <label>Email Address:</label>
+            <input type="email" id="email" placeholder="test@example.com" required>
+            
+            <label>Password:</label>
+            <input type="password" id="password" placeholder="Minimum 6 characters" required minlength="6">
+            
+            <label>Role:</label>
+            <select id="role">
+                <option value="buyer">Buyer</option>
+                <option value="seller">Seller</option>
+            </select>
+            
+            <button type="submit" id="submitBtn">🚀 Test Signup</button>
+        </form>
+
+        <div class="log" id="log">
+<span class="info">📋 Logs will appear here...</span>
+
+<strong>Instructions:</strong>
+1. Fill in the form above
+2. Use a NEW email (not one you tried before)
+3. Click "Test Signup"
+4. Watch the logs below
+5. Check if user appears in Supabase
+
+<strong>Supabase Dashboard:</strong>
+https://supabase.com/dashboard/project/ddytpnlvtjcymlqekbda
+→ Authentication → Users
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://ddytpnlvtjcymlqekbda.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeXRwbmx2dGpjeW1scWVrYmRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyOTk4NjYsImV4cCI6MjA4Nzg3NTg2Nn0.abxicjNc-n3oWzsljI-bbrc3d9mTcEb2Aa_cqewEi1I';
+        
+        let supabase;
+        const logDiv = document.getElementById('log');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const span = document.createElement('span');
+            span.className = type;
+            span.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(document.createTextNode('\n'));
+            logDiv.appendChild(span);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            logDiv.innerHTML = '<span class="info">🔄 Starting signup test...</span>\n';
+        }
+
+        async function testSignup(event) {
+            event.preventDefault();
+            clearLog();
+            
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const role = document.getElementById('role').value;
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Testing...';
+            
+            try {
+                // Step 1: Initialize Supabase
+                log('📡 Step 1: Connecting to Supabase...', 'info');
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                log('✅ Supabase client created', 'success');
+                log(`   URL: ${SUPABASE_URL}`, 'info');
+                
+                // Step 2: Check if email already exists
+                log('\n🔍 Step 2: Checking if email already exists...', 'info');
+                const { data: existingUsers, error: checkError } = await supabase.auth.admin.listUsers();
+                
+                if (checkError) {
+                    log('⚠️ Could not check existing users (this is OK)', 'warning');
+                } else {
+                    const exists = existingUsers?.users?.find(u => u.email === email);
+                    if (exists) {
+                        log('❌ Email already exists in Supabase!', 'error');
+                        log('   Try a different email or delete this user first', 'warning');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '🚀 Test Signup';
+                        return;
+                    }
+                    log('✅ Email is available', 'success');
+                }
+                
+                // Step 3: Create auth user
+                log('\n📝 Step 3: Creating user in Supabase Auth...', 'info');
+                log(`   Email: ${email}`, 'info');
+                log(`   Name: ${name}`, 'info');
+                log(`   Role: ${role}`, 'info');
+                
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            name: name,
+                            role: role
+                        }
+                    }
+                });
+                
+                if (authError) {
+                    log('❌ SIGNUP FAILED!', 'error');
+                    log(`   Error: ${authError.message}`, 'error');
+                    log(`   Code: ${authError.code || 'unknown'}`, 'error');
+                    
+                    if (authError.message.includes('already registered')) {
+                        log('\n💡 Solution: Use a different email', 'warning');
+                    } else if (authError.message.includes('rate limit')) {
+                        log('\n💡 Solution: Wait 10 minutes and try again', 'warning');
+                    } else if (authError.message.includes('confirmation')) {
+                        log('\n💡 Solution: Disable email confirmation in Supabase', 'warning');
+                    }
+                    
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '🚀 Test Signup';
+                    return;
+                }
+                
+                log('✅ USER CREATED IN SUPABASE AUTH!', 'success');
+                log(`   User ID: ${authData.user?.id}`, 'success');
+                log(`   Email: ${authData.user?.email}`, 'success');
+                log(`   Confirmed: ${authData.user?.confirmed_at ? 'Yes' : 'No (needs confirmation)'}`, authData.user?.confirmed_at ? 'success' : 'warning');
+                
+                // Step 4: Save to users table
+                log('\n💾 Step 4: Saving to users table...', 'info');
+                const { error: tableError } = await supabase
+                    .from('users')
+                    .insert([{
+                        id: authData.user.id,
+                        email: email,
+                        name: name,
+                        role: role,
+                        created_at: new Date().toISOString()
+                    }]);
+                
+                if (tableError) {
+                    log('❌ Failed to save to users table', 'error');
+                    log(`   Error: ${tableError.message}`, 'error');
+                    if (tableError.message.includes('does not exist')) {
+                        log('\n💡 Solution: Run the SQL query to create users table', 'warning');
+                    }
+                } else {
+                    log('✅ User saved to users table', 'success');
+                }
+                
+                // Step 5: Final check
+                log('\n🎉 SIGNUP COMPLETE!', 'success');
+                log('\n📊 Next Steps:', 'info');
+                log('1. Go to Supabase Dashboard', 'info');
+                log('2. Click Authentication → Users', 'info');
+                log('3. You should see: ' + email, 'info');
+                log('\n🔗 Dashboard Link:', 'info');
+                log('https://supabase.com/dashboard/project/ddytpnlvtjcymlqekbda', 'info');
+                
+            } catch (error) {
+                log('\n❌ UNEXPECTED ERROR!', 'error');
+                log(`   ${error.message}`, 'error');
+                console.error('Full error:', error);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 Test Signup';
+            }
+        }
+    </script>
+</body>
+</html>
