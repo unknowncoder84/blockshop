@@ -94,14 +94,6 @@ export default function LoginPage({ onLogin }) {
     }
   };
 
-  // Auto-fill demo credentials
-  const fillDemoCredentials = () => {
-    const creds = activeRole === 'buyer' 
-      ? { email: 'buyer1@test.com', password: 'buy01' }
-      : { email: 'Seller1@test.com', password: 'user1' };
-    setFormData(creds);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
       <div className="w-full max-w-6xl grid md:grid-cols-2 gap-8 items-center">
@@ -230,15 +222,6 @@ export default function LoginPage({ onLogin }) {
                 `Login as ${activeRole === 'buyer' ? 'Buyer' : 'Seller'}`
               )}
             </Button>
-
-            {/* Auto-fill Demo Credentials Button */}
-            <button
-              type="button"
-              onClick={fillDemoCredentials}
-              className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline"
-            >
-              Use demo credentials ({activeRole === 'buyer' ? 'buyer1@test.com / buy01' : 'Seller1@test.com / user1'})
-            </button>
           </form>
 
           {/* Google Login - Always show (works in demo mode) */}
