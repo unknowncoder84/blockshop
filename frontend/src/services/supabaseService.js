@@ -26,27 +26,24 @@ class SupabaseService {
     const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
     const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
-    // FORCE DEMO MODE if enabled - ignore Supabase connection
-    if (this.isDemoMode) {
-      console.log('🎮 DEMO MODE ACTIVE - Using localStorage only');
-      this.isConnected = false;
-      this.client = null;
-      return;
-    }
-
+    // ALWAYS try to connect to Supabase if credentials are provided
+    // Demo mode just means we ALSO use localStorage, not that we skip Supabase
     if (supabaseUrl && supabaseKey && 
         supabaseUrl !== 'https://your-project.supabase.co' &&
         supabaseKey !== 'your-anon-key-here') {
       try {
         this.client = createClient(supabaseUrl, supabaseKey);
         this.isConnected = true;
-        console.log('Supabase connected');
+        console.log('✅ Supabase connected successfully');
+        console.log('   URL:', supabaseUrl);
+        console.log('   Demo Mode:', this.isDemoMode);
+        console.log('   Strategy: Dual storage (localStorage + Supabase)');
       } catch (error) {
-        console.warn('Supabase connection failed, using demo mode:', error);
+        console.error('❌ Supabase connection failed:', error);
         this.isConnected = false;
       }
     } else {
-      console.log('Supabase not configured - Demo Mode active');
+      console.log('⚠️ Supabase not configured - Using localStorage only');
       this.isConnected = false;
     }
   }
@@ -915,10 +912,11 @@ class SupabaseService {
     localStorage.setItem('w3mart_users', JSON.stringify(storedUsers));
     console.log('✅ User saved to localStorage');
     
-    // ALSO try to store in Supabase if connected
-    if (this.isConnected && !this.isDemoMode) {
+    // ALWAYS try to store in Supabase if connected (even in demo mode)
+    if (this.isConnected) {
       try {
         console.log('💾 Attempting to save to Supabase...');
+        console.log('   Supabase URL:', process.env.REACT_APP_SUPABASE_URL);
         
         // First, create auth user
         const { data: authData, error: authError } = await this.client.auth.signUp({
@@ -933,10 +931,12 @@ class SupabaseService {
         });
 
         if (authError) {
-          console.warn('⚠️ Supabase auth error:', authError.message);
+          console.error('❌ Supabase auth error:', authError.message);
+          console.error('   Full error:', authError);
           // Continue anyway - user is saved in localStorage
         } else {
           console.log('✅ User created in Supabase Auth');
+          console.log('   User ID:', authData.user?.id);
           
           // Also store in custom users table if you have one
           try {
@@ -951,19 +951,22 @@ class SupabaseService {
               }]);
             
             if (tableError) {
-              console.warn('⚠️ Could not insert into users table:', tableError.message);
+              console.error('❌ Could not insert into users table:', tableError.message);
+              console.error('   Full error:', tableError);
               // This is OK - user is still in auth and localStorage
             } else {
               console.log('✅ User saved to Supabase users table');
             }
           } catch (tableErr) {
-            console.warn('⚠️ Users table might not exist:', tableErr);
+            console.error('❌ Users table error:', tableErr);
           }
         }
       } catch (error) {
-        console.warn('⚠️ Supabase registration failed, but user saved locally:', error);
+        console.error('❌ Supabase registration failed:', error);
         // Continue - user is saved in localStorage
       }
+    } else {
+      console.warn('⚠️ Supabase not connected - user saved to localStorage only');
     }
     
     console.log('✅ User registered successfully');
