@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Supabase Connection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover { background: #45a049; }
+        .test-btn { background: #2196F3; }
+        .test-btn:hover { background: #0b7dda; }
+        .result {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Supabase Connection Tester</h1>
+        
+        <div class="info result">
+            <strong>Your Supabase Configuration:</strong><br>
+            URL: https://ddytpnlvtjcymlqekbda.supabase.co<br>
+            Status: Testing...
+        </div>
+
+        <button onclick="testConnection()">1️⃣ Test Connection</button>
+        <button onclick="checkAuthSettings()" class="test-btn">2️⃣ Check Auth Settings</button>
+        
+        <hr style="margin: 30px 0;">
+        
+        <h2>Test Signup</h2>
+        <form onsubmit="testSignup(event)">
+            <label>Email:</label>
+            <input type="email" id="testEmail" placeholder="test@example.com" required>
+            
+            <label>Password:</label>
+            <input type="password" id="testPassword" placeholder="test123" required>
+            
+            <label>Name:</label>
+            <input type="text" id="testName" placeholder="Test User" required>
+            
+            <button type="submit" class="test-btn">3️⃣ Test Signup</button>
+        </form>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://ddytpnlvtjcymlqekbda.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkeXRwbmx2dGpjeW1scWVrYmRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyOTk4NjYsImV4cCI6MjA4Nzg3NTg2Nn0.abxicjNc-n3oWzsljI-bbrc3d9mTcEb2Aa_cqewEi1I';
+        
+        let supabase;
+
+        function showResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+            console.log(message);
+        }
+
+        async function testConnection() {
+            document.getElementById('results').innerHTML = '';
+            showResult('🔄 Testing connection to Supabase...', 'info');
+            
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                showResult('✅ Supabase client created successfully!', 'success');
+                
+                // Test a simple query
+                const { data, error } = await supabase.from('users').select('count');
+                
+                if (error) {
+                    if (error.message.includes('relation "public.users" does not exist')) {
+                        showResult('⚠️ Users table does not exist yet. Run the SQL query first!', 'error');
+                    } else {
+                        showResult('❌ Error: ' + error.message, 'error');
+                    }
+                } else {
+                    showResult('✅ Successfully connected to Supabase!\n✅ Users table exists!', 'success');
+                }
+            } catch (error) {
+                showResult('❌ Connection failed: ' + error.message, 'error');
+            }
+        }
+
+        async function checkAuthSettings() {
+            showResult('🔄 Checking authentication settings...', 'info');
+            
+            try {
+                if (!supabase) {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                }
+                
+                showResult('ℹ️ To check auth settings:\n1. Go to Supabase Dashboard\n2. Click Authentication → Providers\n3. Check if Email is enabled\n4. Make sure "Confirm email" is DISABLED for testing', 'info');
+                
+            } catch (error) {
+                showResult('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        async function testSignup(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('testEmail').value;
+            const password = document.getElementById('testPassword').value;
+            const name = document.getElementById('testName').value;
+            
+            showResult(`🔄 Attempting to signup: ${email}`, 'info');
+            
+            try {
+                if (!supabase) {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                }
+                
+                // Test signup
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            name: name,
+                            role: 'buyer'
+                        }
+                    }
+                });
+                
+                if (error) {
+                    showResult('❌ Signup failed: ' + error.message, 'error');
+                    
+                    if (error.message.includes('Email rate limit exceeded')) {
+                        showResult('⚠️ Too many signup attempts. Wait a few minutes and try again.', 'error');
+                    } else if (error.message.includes('User already registered')) {
+                        showResult('⚠️ This email is already registered. Try a different email.', 'error');
+                    } else if (error.message.includes('Signups not allowed')) {
+                        showResult('⚠️ Signups are disabled in Supabase settings. Enable them in Authentication settings.', 'error');
+                    }
+                } else {
+                    showResult('✅ Signup successful!', 'success');
+                    showResult('User ID: ' + data.user.id, 'success');
+                    showResult('Email: ' + data.user.email, 'success');
+                    
+                    if (data.user.confirmed_at) {
+                        showResult('✅ Email confirmed automatically', 'success');
+                    } else {
+                        showResult('⚠️ Email confirmation required. Check your email or disable confirmation in Supabase settings.', 'info');
+                    }
+                    
+                    // Try to insert into users table
+                    showResult('🔄 Attempting to save to users table...', 'info');
+                    const { error: tableError } = await supabase
+                        .from('users')
+                        .insert([{
+                            id: data.user.id,
+                            email: email,
+                            name: name,
+                            role: 'buyer',
+                            created_at: new Date().toISOString()
+                        }]);
+                    
+                    if (tableError) {
+                        showResult('❌ Failed to save to users table: ' + tableError.message, 'error');
+                        if (tableError.message.includes('does not exist')) {
+                            showResult('⚠️ Run the SQL query to create the users table!', 'error');
+                        }
+                    } else {
+                        showResult('✅ User saved to users table successfully!', 'success');
+                    }
+                }
+            } catch (error) {
+                showResult('❌ Unexpected error: ' + error.message, 'error');
+            }
+        }
+
+        // Auto-test connection on load
+        window.onload = () => {
+            testConnection();
+        };
+    </script>
+</body>
+</html>
