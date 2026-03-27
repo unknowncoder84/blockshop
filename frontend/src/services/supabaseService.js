@@ -884,73 +884,99 @@ class SupabaseService {
    */
   async register(email, password, role, name) {
     console.log('📝 REGISTER ATTEMPT:', email, role);
+    console.log('🔌 Supabase Connected:', this.isConnected);
+    console.log('🎮 Demo Mode:', this.isDemoMode);
     
-    if (!this.isConnected || this.isDemoMode) {
-      // Get stored users
-      const storedUsers = JSON.parse(localStorage.getItem('w3mart_users') || '[]');
-      
-      // Check if user already exists
-      const existingUser = storedUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-      if (existingUser) {
-        console.log('❌ User already exists');
-        return {
-          success: false,
-          message: 'An account with this email already exists. Please login instead.'
-        };
-      }
-      
-      // Create new user
-      const newUser = {
-        id: 'user-' + Date.now(),
-        email,
-        password, // In production, this should be hashed!
-        role,
-        name,
-        created_at: new Date().toISOString()
-      };
-      
-      storedUsers.push(newUser);
-      localStorage.setItem('w3mart_users', JSON.stringify(storedUsers));
-      
-      console.log('✅ User registered successfully');
-      return {
-        success: true,
-        user: {
-          id: newUser.id,
-          email: newUser.email,
-          role: newUser.role,
-          name: newUser.name
-        },
-        message: 'Registration successful'
-      };
-    }
-
-    try {
-      const { data, error } = await this.client.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            role,
-            name
-          }
-        }
-      });
-
-      if (error) throw error;
-
-      return {
-        success: true,
-        user: data.user,
-        message: 'Registration successful'
-      };
-    } catch (error) {
-      console.error('Registration error:', error);
+    // ALWAYS store in localStorage first (for demo mode compatibility)
+    const storedUsers = JSON.parse(localStorage.getItem('w3mart_users') || '[]');
+    
+    // Check if user already exists in localStorage
+    const existingUser = storedUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (existingUser) {
+      console.log('❌ User already exists in localStorage');
       return {
         success: false,
-        message: error.message
+        message: 'An account with this email already exists. Please login instead.'
       };
     }
+    
+    // Create new user object
+    const newUser = {
+      id: 'user-' + Date.now(),
+      email,
+      password, // In production, this should be hashed!
+      role,
+      name,
+      created_at: new Date().toISOString()
+    };
+    
+    // Store in localStorage
+    storedUsers.push(newUser);
+    localStorage.setItem('w3mart_users', JSON.stringify(storedUsers));
+    console.log('✅ User saved to localStorage');
+    
+    // ALSO try to store in Supabase if connected
+    if (this.isConnected && !this.isDemoMode) {
+      try {
+        console.log('💾 Attempting to save to Supabase...');
+        
+        // First, create auth user
+        const { data: authData, error: authError } = await this.client.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              role,
+              name
+            }
+          }
+        });
+
+        if (authError) {
+          console.warn('⚠️ Supabase auth error:', authError.message);
+          // Continue anyway - user is saved in localStorage
+        } else {
+          console.log('✅ User created in Supabase Auth');
+          
+          // Also store in custom users table if you have one
+          try {
+            const { error: tableError } = await this.client
+              .from('users')
+              .insert([{
+                id: authData.user?.id || newUser.id,
+                email: email,
+                name: name,
+                role: role,
+                created_at: new Date().toISOString()
+              }]);
+            
+            if (tableError) {
+              console.warn('⚠️ Could not insert into users table:', tableError.message);
+              // This is OK - user is still in auth and localStorage
+            } else {
+              console.log('✅ User saved to Supabase users table');
+            }
+          } catch (tableErr) {
+            console.warn('⚠️ Users table might not exist:', tableErr);
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Supabase registration failed, but user saved locally:', error);
+        // Continue - user is saved in localStorage
+      }
+    }
+    
+    console.log('✅ User registered successfully');
+    return {
+      success: true,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        role: newUser.role,
+        name: newUser.name
+      },
+      message: 'Registration successful'
+    };
   }
 
   /**

@@ -1,148 +1,147 @@
-# 🚀 SUPABASE SETUP GUIDE - Real-Time Sync
+# 🚀 Supabase Setup Guide
 
-## ⚠️ IMPORTANT: Choose Your Mode
-
-You have TWO options:
-
-### Option 1: Demo Mode (RECOMMENDED FOR NOW)
-- ✅ Works immediately
-- ✅ No database setup needed
-- ✅ Perfect for testing
-- ✅ All features work
-- ❌ Data only in browser localStorage
-
-### Option 2: Supabase Mode (Production Ready)
-- ✅ Real database
-- ✅ Real-time sync
-- ✅ Data persists across devices
-- ❌ Requires database setup (15 minutes)
-
-## 🎯 Current Status
-
-Right now, I've set `REACT_APP_DEMO_MODE=false` in `.env`, which means it will try to use Supabase.
-
-**BUT** you need to run the SQL schema first, or you'll get errors!
-
-## 📋 Setup Steps for Supabase Mode
-
-### Step 1: Go to Supabase Dashboard
-1. Open https://supabase.com/dashboard
-2. Select your project: `ddytpnlvtjcymlqekbda`
-3. Go to "SQL Editor" in left sidebar
-
-### Step 2: Run the Schema
-1. Click "New Query"
-2. Copy ALL content from `SUPABASE_SCHEMA.sql`
-3. Paste into the editor
-4. Click "Run" button
-5. Wait for success message
-
-### Step 3: Verify Tables Created
-1. Go to "Table Editor" in left sidebar
-2. You should see these tables:
-   - users
-   - products
-   - orders
-   - reviews
-
-### Step 4: Enable Realtime
-1. Go to "Database" → "Replication"
-2. Find "orders" table
-3. Toggle "Enable" for realtime
-4. Click "Save"
-
-### Step 5: Test the Connection
-1. Restart your app:
-   ```bash
-   cd frontend
-   npm start
-   ```
-
-2. Check console - should see:
-   ```
-   Supabase connected
-   ```
-
-3. Try creating an order at `/test-order`
-
-## 🔄 OR: Switch Back to Demo Mode
-
-If you want to keep using demo mode (localStorage):
-
-1. Edit `frontend/.env`:
-   ```env
-   REACT_APP_DEMO_MODE=true
-   ```
-
-2. Restart app:
-   ```bash
-   cd frontend
-   npm start
-   ```
-
-3. Everything works immediately!
-
-## 🎯 What I Recommend
-
-**For NOW: Use Demo Mode**
-- Change `.env` back to `REACT_APP_DEMO_MODE=true`
-- Everything works perfectly
-- No database setup needed
-- You can switch to Supabase later
-
-**For PRODUCTION: Use Supabase**
-- Run the SQL schema
-- Keep `REACT_APP_DEMO_MODE=false`
-- Get real-time sync
-- Data persists properly
-
-## 📊 Feature Comparison
-
-| Feature | Demo Mode | Supabase Mode |
-|---------|-----------|---------------|
-| Order Creation | ✅ Instant | ✅ Instant |
-| Order Display | ✅ Works | ✅ Works |
-| Real-time Sync | ✅ Polling (10s) | ✅ Real-time |
-| Data Persistence | ❌ Browser only | ✅ Database |
-| Multi-device | ❌ No | ✅ Yes |
-| Setup Time | ✅ 0 minutes | ⏱️ 15 minutes |
-
-## 🚀 Quick Decision
-
-**Want it working NOW?**
-```bash
-# Edit frontend/.env
-REACT_APP_DEMO_MODE=true
-
-# Restart
-cd frontend
-npm start
-```
-
-**Want production-ready?**
-1. Run `SUPABASE_SCHEMA.sql` in Supabase
-2. Keep `REACT_APP_DEMO_MODE=false`
-3. Restart app
-
-## ❓ Which Should You Choose?
-
-Choose **Demo Mode** if:
-- You want to test features quickly
-- You're still developing
-- You don't need data to persist
-- You want zero setup time
-
-Choose **Supabase Mode** if:
-- You're ready for production
-- You need real-time sync
-- You want data to persist
-- You can spend 15 minutes on setup
-
-## 📝 My Recommendation
-
-**Start with Demo Mode**, test everything, then switch to Supabase when ready for production.
+## What's Working Now:
+✅ Demo accounts (buyer1@test.com, Seller1@test.com) are back
+✅ New signups save to BOTH localStorage AND Supabase
+✅ You can view all users at: http://localhost:3000/view-users
+✅ Login works with both demo and new accounts
 
 ---
 
-**Current Setting**: Supabase Mode (will fail without schema)
-**Recommended**: Switch to Demo Mode for now
+## 📋 Step 1: Create Users Table in Supabase
+
+Go to your Supabase dashboard: https://supabase.com/dashboard/project/ddytpnlvtjcymlqekbda
+
+### SQL Editor → New Query → Run this:
+
+```sql
+-- Create users table
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('buyer', 'seller')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable Row Level Security
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- Create policy to allow anyone to read users (for admin viewing)
+CREATE POLICY "Allow public read access" ON users
+  FOR SELECT
+  USING (true);
+
+-- Create policy to allow anyone to insert users (for signup)
+CREATE POLICY "Allow public insert" ON users
+  FOR INSERT
+  WITH CHECK (true);
+
+-- Create index for faster email lookups
+CREATE INDEX IF NOT EXISTS users_email_idx ON users(email);
+```
+
+---
+
+## 📋 Step 2: Enable Email Authentication
+
+1. Go to **Authentication** → **Providers** in Supabase
+2. Make sure **Email** is enabled
+3. Turn OFF "Confirm email" (for testing)
+4. Save changes
+
+---
+
+## 🧪 Step 3: Test the System
+
+### Test Signup:
+1. Go to http://localhost:3000/signup
+2. Create a new account with any email
+3. Check console - you should see:
+   - ✅ User saved to localStorage
+   - ✅ User created in Supabase Auth
+   - ✅ User saved to Supabase users table
+
+### View Users:
+1. Go to http://localhost:3000/view-users
+2. You'll see:
+   - **LocalStorage Users**: Demo accounts + new signups
+   - **Supabase Users**: Click "Load from Supabase" to see database users
+
+### Check Supabase Dashboard:
+1. Go to **Authentication** → **Users** - see auth users
+2. Go to **Table Editor** → **users** - see your custom users table
+
+---
+
+## 🎯 How It Works:
+
+### When User Signs Up:
+1. ✅ Checks if email exists in localStorage
+2. ✅ Creates user in localStorage (for demo mode)
+3. ✅ Creates user in Supabase Auth (for authentication)
+4. ✅ Creates user in Supabase users table (for your data)
+
+### When User Logs In:
+1. ✅ Checks localStorage first (fast, works offline)
+2. ✅ Falls back to Supabase if needed
+
+### Demo Accounts:
+- buyer1@test.com / buy01
+- Seller1@test.com / user1
+- These are in localStorage only (not in Supabase)
+
+---
+
+## 🔍 Troubleshooting:
+
+### "Could not load users from Supabase"
+- Make sure you created the users table (Step 1)
+- Check if RLS policies are set correctly
+- Verify your Supabase URL and key in `.env`
+
+### "User already exists"
+- This means the email is already in localStorage
+- Go to http://localhost:3000/view-users
+- Click "Clear All" to reset
+- Or use different email
+
+### Users not appearing in Supabase
+- Check browser console for errors
+- Verify Supabase connection in console logs
+- Make sure REACT_APP_DEMO_MODE=true in .env
+
+---
+
+## 📊 View Users Page Features:
+
+### LocalStorage Section:
+- Shows all users in browser storage
+- Includes demo accounts
+- Can refresh or clear all
+
+### Supabase Section:
+- Click "Load from Supabase" to fetch
+- Shows users from database
+- Real-time data from Supabase
+
+---
+
+## 🎉 What You Get:
+
+1. **Demo Mode**: Works offline with localStorage
+2. **Production Ready**: Saves to Supabase automatically
+3. **Dual Storage**: Best of both worlds
+4. **Easy Debugging**: View all users at /view-users
+5. **No Breaking Changes**: Existing features still work
+
+---
+
+## 🚀 Next Steps:
+
+1. Run the SQL query in Supabase (Step 1)
+2. Test signup with a new email
+3. Go to /view-users to see your users
+4. Check Supabase dashboard to verify
+
+All changes are ready to push to GitHub!

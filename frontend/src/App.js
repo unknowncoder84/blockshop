@@ -36,6 +36,7 @@ import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import WishlistPage from './pages/WishlistPage';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
+import ViewUsersPage from './pages/ViewUsersPage';
 import { CartProvider } from './contexts/CartContext';
 import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -101,8 +102,8 @@ function App() {
       // Initialize demo products
       initializeDemoProducts();
       
-      // DON'T initialize default users - let users signup fresh
-      // initializeDefaultUsers(); // REMOVED - allows fresh signups
+      // Initialize default demo users (buyer1@test.com, Seller1@test.com)
+      initializeDefaultUsers();
       
       // App is ready
       setLoading(false);
@@ -344,6 +345,9 @@ function App() {
             <Route path="/transaction-success" element={
               user ? <TransactionSuccess /> : <Navigate to="/login" />
             } />
+            
+            {/* Admin/Debug Routes */}
+            <Route path="/view-users" element={<ViewUsersPage />} />
             
             {/* Fallback route */}
             <Route path="*" element={
