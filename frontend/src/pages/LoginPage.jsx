@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import GoogleLoginModal from '../components/GoogleLoginModal';
 import supabaseService from '../services/supabaseService';
 
 export default function LoginPage({ onLogin }) {
@@ -14,7 +13,6 @@ export default function LoginPage({ onLogin }) {
     password: ''
   });
   const [loading, setLoading] = useState(false);
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -66,37 +64,40 @@ export default function LoginPage({ onLogin }) {
     }
   };
 
-  const handleGoogleLogin = () => {
-    setShowGoogleModal(true);
-  };
-
-  const handleGoogleSuccess = async (googleData) => {
-    // Check if user exists with this email
-    const storedUsers = JSON.parse(localStorage.getItem('w3mart_users') || '[]');
-    const existingUser = storedUsers.find(u => u.email.toLowerCase() === googleData.email.toLowerCase());
-    
-    if (existingUser) {
-      // User exists, log them in
-      const userData = {
-        id: existingUser.id,
-        email: existingUser.email,
-        name: existingUser.name,
-        role: existingUser.role,
-        walletAddress: existingUser.walletAddress || null
-      };
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
       
-      onLogin(userData);
-      toast.success('Logged in with Google!');
-      navigate('/');
-    } else {
-      // User doesn't exist, redirect to complete registration
-      toast.info('Complete your registration to continue');
-      navigate('/complete-google-registration', { 
-        state: { 
-          email: googleData.email, 
-          name: googleData.name 
-        } 
+      // Check if Supabase is connected
+      if (!supabaseService.isConnected || !supabaseService.client) {
+        toast.error('Google login requires Supabase connection. Please use email login.');
+        setLoading(false);
+        return;
+      }
+
+      // Use REAL Google OAuth from Supabase
+      const { data, error } = await supabaseService.client.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        }
       });
+
+      if (error) {
+        console.error('Google OAuth error:', error);
+        toast.error('Google login not configured. Please use email login or contact admin.');
+        setLoading(false);
+      }
+      // User will be redirected to Google login page automatically
+      // No need to set loading false here as page will redirect
+    } catch (error) {
+      console.error('Google login error:', error);
+      toast.error('Google login failed. Please use email login.');
+      setLoading(false);
     }
   };
 
@@ -231,14 +232,6 @@ export default function LoginPage({ onLogin }) {
               </div>
             </Button>
           </div>
-
-          {/* Google Login Modal */}
-          <GoogleLoginModal
-            isOpen={showGoogleModal}
-            onClose={() => setShowGoogleModal(false)}
-            onSuccess={handleGoogleSuccess}
-            mode="login"
-          />
 
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-center text-gray-600">
