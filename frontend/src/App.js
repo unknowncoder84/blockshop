@@ -101,8 +101,8 @@ function App() {
       // Initialize demo products
       initializeDemoProducts();
       
-      // Initialize default users
-      initializeDefaultUsers();
+      // DON'T initialize default users - let users signup fresh
+      // initializeDefaultUsers(); // REMOVED - allows fresh signups
       
       // App is ready
       setLoading(false);

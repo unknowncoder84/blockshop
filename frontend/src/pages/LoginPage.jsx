@@ -9,7 +9,6 @@ import supabaseService from '../services/supabaseService';
 
 export default function LoginPage({ onLogin }) {
   const navigate = useNavigate();
-  const [activeRole, setActiveRole] = useState('buyer'); // buyer or seller
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -38,17 +37,24 @@ export default function LoginPage({ onLogin }) {
       const result = await supabaseService.login(formData.email, formData.password);
       
       if (result.success) {
+        // CRITICAL FIX: Use the user's actual role from database, NOT the tab selection
         const userData = {
           id: result.user.id,
           email: result.user.email,
-          name: result.user.user_metadata?.name || result.user.email.split('@')[0],
-          role: activeRole, // Use the selected role from tabs
+          name: result.user.name || result.user.user_metadata?.name || result.user.email.split('@')[0],
+          role: result.user.role, // Use actual role from database
           walletAddress: result.user.user_metadata?.wallet_address || null
         };
         
         onLogin(userData);
         toast.success('Login successful!');
-        navigate('/');
+        
+        // Navigate based on actual user role
+        if (userData.role === 'seller') {
+          navigate('/dashboard');
+        } else {
+          navigate('/');
+        }
       } else {
         toast.error(result.message || 'Login failed');
       }
@@ -153,32 +159,6 @@ export default function LoginPage({ onLogin }) {
             <p className="text-gray-600">Login to continue</p>
           </div>
 
-          {/* Role Selection Tabs */}
-          <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-lg">
-            <button
-              type="button"
-              onClick={() => setActiveRole('buyer')}
-              className={`flex-1 py-3 px-4 rounded-md font-medium transition-all ${
-                activeRole === 'buyer'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              🛍️ Buyer
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveRole('seller')}
-              className={`flex-1 py-3 px-4 rounded-md font-medium transition-all ${
-                activeRole === 'seller'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              🏪 Seller
-            </button>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <Label htmlFor="email" className="text-gray-700 font-medium">Email Address</Label>
@@ -219,7 +199,7 @@ export default function LoginPage({ onLogin }) {
                   <span>Logging in...</span>
                 </div>
               ) : (
-                `Login as ${activeRole === 'buyer' ? 'Buyer' : 'Seller'}`
+                'Login'
               )}
             </Button>
           </form>
